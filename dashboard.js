@@ -28,8 +28,13 @@ function renderBusinessList(businessList) {
       starLineChartClick(i);
       window.clickedBusinessIndex = i + 1;
       window.clickedBusinessID = business._source.business_id;
+      d3.select('#full-address').text(business._source.full_address);
       get_review_details_within_time_range("yelp", "review1208v3", business._source.business_id, 100, "asc", "2005-01-01", "2014-12-31");
+    })
+    .on('mouseout', function() {
+      clearAllHover();
     });
+  $('#business-list .table-responsive').height($('#review-list').height() - 176);
 }
 
 //function renderBusinessListReRank(businessList) {//different input format compared with renderBusinessList
@@ -86,7 +91,7 @@ function renderLineCharts(lineChartData) {
 
 function drawReviewAmountLineChart(lineChartData) {
   var reviewContainer = $('#review-amount-line-chart');
-  var lineChartHeight = $('#review-list').height() / 2;
+  var lineChartHeight = ($('#review-list').height() - 60) / 2;
   var lineChartWeight = reviewContainer.width();
   reviewContainer.height(lineChartHeight);
   var reviewSelection = d3.select('#review-amount-line-chart');
@@ -96,15 +101,15 @@ function drawReviewAmountLineChart(lineChartData) {
     .classed('line-chart', true)
     .attr('height', lineChartHeight)
     .attr('width', lineChartWeight);
-  var mindate = new Date(2005, 1, 1);
-  var maxdate = new Date(2014, 12, 31);
+  var mindate = new Date(2004, 1, 1);
+  var maxdate = new Date(2015, 12, 31);
   var xScale = d3.time.scale().range([
     30,
     lineChartWeight - 30
   ]).domain([mindate, maxdate]);
   var yScale = d3.scale.linear().range([
     lineChartHeight - 30,
-    30
+    10
   ]).domain([0, global_line_chart_max_review_amount]);
   var xAxis = d3.svg.axis()
     .scale(xScale).orient('bottom');
@@ -141,11 +146,17 @@ function drawReviewAmountLineChart(lineChartData) {
       starLineChartHighlight(i);
       var pointer = d3.mouse(this);
       var selectedDate = timeFormate(xScale.invert(pointer[0]));
-      //renderTooltip(selection.text(), selectedDate, data, [d3.event.x, d3.event.y]);
+      renderTooltip(selection.text(), selectedDate, data, [d3.event.x, d3.event.y], i);
     })
     .on('click', function (data, i) {
       var selection = $('#business-list tbody tr:nth-child(' + (i + 1) + ') td')
       selection.trigger('click');
+    })
+    .on('mouseout', function() {
+      clearAllHover();
+      d3.select('#tooltip').style({
+        'display': 'none'
+      });
     });
   reviewPath.classed('profile', true)
     .attr('d', line)
@@ -266,7 +277,7 @@ function drawReviewAmountLineChart(lineChartData) {
 
 function drawStarAmountLineChart(lineChartData) {
   var starContainer = $('#star-amount-line-chart');
-  var lineChartHeight = $('#review-list').height() / 2;
+  var lineChartHeight = ($('#review-list').height() - 60)/ 2;
   var lineChartWeight = starContainer.width();
   starContainer.height(lineChartHeight);
   var starSelection = d3.select('#star-amount-line-chart');
@@ -277,15 +288,15 @@ function drawStarAmountLineChart(lineChartData) {
     .attr('height', lineChartHeight)
     .attr('width', lineChartWeight)
     .attr('transform', 'translate(0, ' + lineChartHeight + ')');
-  var mindate = new Date(2005, 1, 1);
-  var maxdate = new Date(2014, 12, 31);
+  var mindate = new Date(2004, 1, 1);
+  var maxdate = new Date(2015, 12, 31);
   var xScale = d3.time.scale().range([
     30,
     lineChartWeight - 30
   ]).domain([mindate, maxdate]);
   var yScale = d3.scale.linear().range([
     lineChartHeight - 30,
-    30
+    10
   ]).domain([0, 5]);
   var xAxis = d3.svg.axis()
     .scale(xScale).orient('bottom');
@@ -316,12 +327,22 @@ function drawStarAmountLineChart(lineChartData) {
     .interpolate('linear');
   starPath.enter().append('path')
     .on('mousemove', function (data, i) {
+      var selection = $('#business-list tbody tr:nth-child(' + (i + 1) + ') td')
       businessListHighlight(i);
       reviewLineChartHighlight(i);
       starLineChartHighlight(i);
+      var pointer = d3.mouse(this);
+      var selectedDate = timeFormate(xScale.invert(pointer[0]));
+      renderTooltip(selection.text(), selectedDate, data, [d3.event.x, d3.event.y], i);
     })
     .on('click', function (data, i) {
       $('#business-list tbody tr:nth-child(' + (i + 1) + ') td').trigger('click');
+    })
+    .on('mouseout', function() {
+      clearAllHover();
+      d3.select('#tooltip').style({
+        'display': 'none'
+      });
     });
   starPath.classed('profile', true)
     .attr('d', line)
@@ -334,9 +355,9 @@ function drawStarAmountLineChart(lineChartData) {
     $('#business-list tbody tr:first-child td').trigger('click');
   }
   else {
-    businessListClick(window.clickedBusinessIndex);
-    reviewLineChartClick(window.clickedBusinessIndex);
-    starLineChartClick(window.clickedBusinessIndex);
+    businessListClick(window.clickedBusinessIndex - 1);
+    reviewLineChartClick(window.clickedBusinessIndex - 1);
+    starLineChartClick(window.clickedBusinessIndex - 1);
   }
 
   // Drag Selection.
@@ -441,17 +462,16 @@ function drawStarAmountLineChart(lineChartData) {
     })
     .on('mouseout', function () {
       if (d3.event.relatedTarget.tagName == 'HTML') {
-        reviewContent.selectAll('rect.selection').remove();
-        reviewContent.selectAll('.selection').classed('selection', false);
+        starContent.selectAll('rect.selection').remove();
+        starContent.selectAll('.selection').classed('selection', false);
       }
     });
 }
 
-function renderTooltip(businessName, selectedDate, data, pointer) {
+function renderTooltip(businessName, selectedDate, data, pointer, index) {
   var i = 0;
   var reviewAmount = 0;
   var starAmount = 0;
-  console.log(data);
   while (i < data.length) {
     if (data[i].date == selectedDate) {
       reviewAmount = data[i].review_amount;
@@ -460,15 +480,25 @@ function renderTooltip(businessName, selectedDate, data, pointer) {
     }
     i++;
   }
-  console.log(reviewAmount, starAmount);
-  d3.select('.tooltip').style({
-    'display': 'block',
+  d3.select('#tooltip').style({
+    'display': 'inline',
     'top': pointer[1] + 'px',
     'left': pointer[0] + 'px'
   });
   d3.select('#business-name').text(businessName);
+  d3.select('#selected-date').text(selectedDate);
   d3.select('#review-amount').text(reviewAmount);
   d3.select('#star-amount').text(starAmount);
+  if (window.clickedBusinessIndex == index + 1) {
+    d3.select('#tooltip')
+      .classed('panel-info', true)
+      .classed('panel-warning', false);
+  }
+  else {
+    d3.select('#tooltip')
+      .classed('panel-info', false)
+      .classed('panel-warning', true);
+  }
   //.addClass('panel panel-info tooltip');
   //panelSelection.attr('transform', 'translate(' + pointer[0] + ', ' + pointer[1] + ')');
   //var tooltipHeading = panelSelection.append('div')
@@ -512,6 +542,15 @@ function starLineChartClick(index) {
   var starContent = d3.select('.star-content');
   starContent.selectAll('path').classed('path-clicked', false);
   starContent.select('path:nth-child(' + (index + 1 ) + ')').classed('path-clicked', true);
+}
+
+function clearAllHover() {
+  var tbodySelection = d3.select('#business-list').select('tbody');
+  tbodySelection.selectAll('td').classed('text-highlighted', false);
+  var reviewContent = d3.select('.review-content');
+  reviewContent.selectAll('path').classed('path-highlighted', false);
+  var starContent = d3.select('.star-content');
+  starContent.selectAll('path').classed('path-highlighted', false);
 }
 
 function highlightWordInReview(wordList) {
@@ -569,46 +608,47 @@ function timeFormate(date) {
   return formatDate;
 }
 
-function renderCategoryFilter(categoryList) {
-  var dropdown = d3.select('#category-filter');
-  dropdown.selectAll('*').remove();
-  var filterSelection = dropdown.selectAll('a').data(categoryList);
-  var listSelection = filterSelection.enter().append('li')
-    .classed('category-filter', true);
-  listSelection.append('a').text(function(text) {
-    return text.charAt(0).toUpperCase() + text.slice(1);
-  })
-    .on('click', function(category) {
+function renderCategoryFilter() {
+  d3.text('dataPreparation/category.txt', function(category_strings){
+    var category_array = category_strings.split(",");
+    category_array.unshift('All');
+    var eventSelect = $('#category-filter');
+    eventSelect.select2({
+      data: category_array,
+      width: '60%'
+    });
+    eventSelect.on('select2:select', function(event) {
       global_next_prev_click_times = 0;
-      d3.select('.category-info').text(category.charAt(0).toUpperCase() + category.slice(1));
-      if (category == 'None') {
+      var category = event.params.data.id.toLowerCase();
+      if (category == 'all') {
         category = '';
       }
       window.selectedCategoryFilter = category;
-      get_businesses_list_based_on_abnormality_score("yelp", "business1208v3", 10, 0, window.selectedLocationFilter, category);
+      window.clickedBusinessID = '';
+      get_businesses_list_based_on_abnormality_score('yelp', 'business1216', 10, 0, window.selectedLocationFilter, category, 'abnormality_score_' + global_sortKey);
+      console.log(category);
     });
-  filterSelection.exit().remove();
+  });
 }
 
-function renderLocation_filter() {
-  var dropdown = d3.select('#location-filter');
-  dropdown.selectAll('*').remove();
-  var filterSelection = dropdown.selectAll('a').data(global_state_filter);
-  var listSelection = filterSelection.enter().append('li')
-    .classed('location-filter', true);
-  listSelection.append('a').text(function(text) {
-      return text;
-    })
-    .on('click', function(location) {
-      global_next_prev_click_times = 0;
-      d3.select('.location-info').text(location);
-      if (location == 'None') {
-        location = '';
-      }
-      window.selectedLocationFilter = location;
-      get_businesses_list_based_on_abnormality_score("yelp", "business1208v3", 10, 0, location, window.selectedCategoryFilter);
-    });
-  filterSelection.exit().remove();
+function renderLocationFilter() {
+  global_state_filter.unshift('All');
+  var eventSelect = $('#location-filter');
+  eventSelect.select2({
+    data: global_state_filter,
+    width: '60%'
+  });
+  eventSelect.on('select2:select', function(event) {
+    global_next_prev_click_times = 0;
+    var location = event.params.data.id;
+    if (location == 'All') {
+      location = '';
+    }
+    window.selectedLocationFilter = location;
+    window.clickedBusinessID = '';
+    get_businesses_list_based_on_abnormality_score('yelp', 'business1216', 10, 0, location, window.selectedCategoryFilter, 'abnormality_score_' + global_sortKey);
+    console.log(location);
+  });
 }
 
 //Unused code.

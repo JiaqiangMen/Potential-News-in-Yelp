@@ -115,12 +115,11 @@ function renderFunctions(business_list) {
         i++;
     }
     renderBusinessList(businessList);
+    console.log(businessList);
     renderLineCharts(list_for_line);
     $(window).resize(function () {
         renderLineCharts(list_for_line);
+        $('#business-list .table-responsive').height($('#review-list').height() - 176);
     });
-
-    get_category_filter("yelp", "business1216", 50);
-    renderLocation_filter();
 }
 
